@@ -1,13 +1,11 @@
 /**
- * LoginScreen – Tela de Login.
+ * RegisterScreen – Tela de Cadastro.
  *
- * Esta tela permite que o usuário entre no app com email e senha.
- * Demonstra conceitos importantes:
- * - Gerenciamento de estado local com useState
- * - Validação de formulário
- * - Consumo do AuthContext com useAuth
- * - Navegação com useNavigation
- * - Feedback visual de erros
+ * Permite que novos usuários se registrem no app.
+ * Demonstra:
+ * - Validação de formulário mais complexa (confirmação de senha)
+ * - Feedback visual de erros por campo
+ * - Redirecionamento automático após cadastro
  */
 import React, { useState } from "react";
 import {
@@ -29,56 +27,72 @@ import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/common/Button";
 import { CustomInput } from "@/components/common/CustomInput";
 
-// Tipo de navegação específico para o AuthStack
-type LoginNavigationProp = NativeStackNavigationProp<
+type RegisterNavigationProp = NativeStackNavigationProp<
   AuthStackParamList,
-  "Login"
+  "Register"
 >;
 
-export function LoginScreen() {
+export function RegisterScreen() {
   // ------------------------------------------------------------------
   // Estado local do formulário
   // ------------------------------------------------------------------
 
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  // Objeto de erros: cada campo pode ter sua própria mensagem de erro
-  const [errors, setErrors] = useState<{ email?: string; password?: string; general?: string }>({});
+  const [errors, setErrors] = useState<{
+    name?: string;
+    email?: string;
+    password?: string;
+    confirmPassword?: string;
+    general?: string;
+  }>({});
 
   // ------------------------------------------------------------------
-  // Hooks de navegação e autenticação
+  // Hooks
   // ------------------------------------------------------------------
 
-  /**
-   * useNavigation dá acesso ao objeto de navegação.
-   * O tipo genérico garante autocomplete correto das rotas.
-   */
-  const navigation = useNavigation<LoginNavigationProp>();
-  const { login } = useAuth();
+  const navigation = useNavigation<RegisterNavigationProp>();
+  const { register } = useAuth();
 
   // ------------------------------------------------------------------
   // Validação
   // ------------------------------------------------------------------
 
-  /** Valida os campos e retorna true se tudo estiver ok */
   function validate(): boolean {
     const newErrors: typeof errors = {};
 
+    // Valida nome
+    if (!name.trim()) {
+      newErrors.name = "O nome é obrigatório.";
+    } else if (name.trim().length < 2) {
+      newErrors.name = "O nome deve ter pelo menos 2 caracteres.";
+    }
+
+    // Valida e-mail
     if (!email.trim()) {
       newErrors.email = "O e-mail é obrigatório.";
-    } else if (!email.includes("@")) {
+    } else if (!email.includes("@") || !email.includes(".")) {
       newErrors.email = "Digite um e-mail válido.";
     }
 
+    // Valida senha
     if (!password) {
       newErrors.password = "A senha é obrigatória.";
     } else if (password.length < 6) {
       newErrors.password = "A senha deve ter pelo menos 6 caracteres.";
     }
 
+    // Valida confirmação de senha
+    if (!confirmPassword) {
+      newErrors.confirmPassword = "Confirme sua senha.";
+    } else if (password !== confirmPassword) {
+      newErrors.confirmPassword = "As senhas não coincidem.";
+    }
+
     setErrors(newErrors);
-    // Se o objeto de erros está vazio, o formulário é válido
     return Object.keys(newErrors).length === 0;
   }
 
@@ -86,26 +100,24 @@ export function LoginScreen() {
   // Submissão do formulário
   // ------------------------------------------------------------------
 
-  function handleLogin() {
-    if (!validate()) return; // interrompe se houver erros
+  function handleRegister() {
+    if (!validate()) return;
 
     setLoading(true);
 
-    /**
-     * Simulamos um delay de rede com setTimeout.
-     * Em um app real, aqui fariamos uma chamada à API.
-     */
     setTimeout(() => {
-      const success = login(email.trim(), password);
+      // Chama a função register do AuthContext
+      const result = register(name.trim(), email.trim(), password);
 
-      if (!success) {
-        setErrors({ general: "E-mail ou senha incorretos." });
+      if (!result.success) {
+        // Exibe o erro retornado pelo contexto (ex.: e-mail já cadastrado)
+        setErrors({ general: result.error });
       }
-      // Se o login for bem-sucedido, o RootNavigator redireciona automaticamente
-      // porque o estado `user` no AuthContext foi atualizado.
+      // Se bem-sucedido, o register() já faz o login automático,
+      // e o RootNavigator redireciona para o app.
 
       setLoading(false);
-    }, 800); // 800ms de delay simulado
+    }, 800);
   }
 
   // ------------------------------------------------------------------
@@ -113,51 +125,62 @@ export function LoginScreen() {
   // ------------------------------------------------------------------
 
   return (
-    /**
-     * SafeAreaView garante que o conteúdo não fique atrás de
-     * elementos do sistema (notch, barra de status, etc.)
-     */
     <SafeAreaView style={styles.safeArea}>
-      {/**
-       * KeyboardAvoidingView sobe o conteúdo quando o teclado
-       * aparece, evitando que ele cubra os inputs.
-       * O comportamento difere entre iOS ("padding") e Android ("height").
-       */}
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         <ScrollView
           contentContainerStyle={styles.container}
-          keyboardShouldPersistTaps="handled" // permite tocar fora do teclado
+          keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Cabeçalho visual */}
+          {/* Botão de voltar */}
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Text style={styles.backText}>← Voltar</Text>
+          </TouchableOpacity>
+
+          {/* Cabeçalho */}
           <View style={styles.header}>
-            <Text style={styles.logo}>💰</Text>
-            <Text style={styles.title}>FinançasApp</Text>
-            <Text style={styles.subtitle}>Gerencie seu dinheiro com facilidade</Text>
+            <Text style={styles.logo}>📝</Text>
+            <Text style={styles.title}>Criar Conta</Text>
+            <Text style={styles.subtitle}>
+              Preencha os dados abaixo para se cadastrar
+            </Text>
           </View>
 
-          {/* Card do formulário */}
+          {/* Formulário */}
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Entrar</Text>
-
-            {/* Erro geral (ex.: credenciais inválidas) */}
+            {/* Erro geral */}
             {errors.general ? (
               <View style={styles.errorBanner}>
                 <Text style={styles.errorBannerText}>⚠️ {errors.general}</Text>
               </View>
             ) : null}
 
-            {/* Campo de e-mail */}
+            {/* Campo nome */}
+            <CustomInput
+              label="Nome completo"
+              placeholder="Seu nome"
+              value={name}
+              onChangeText={(text) => {
+                setName(text);
+                if (errors.name) setErrors((prev) => ({ ...prev, name: undefined }));
+              }}
+              error={errors.name}
+              autoCapitalize="words" // capitaliza cada palavra
+            />
+
+            {/* Campo e-mail */}
             <CustomInput
               label="E-mail"
               placeholder="seu@email.com"
               value={email}
               onChangeText={(text) => {
                 setEmail(text);
-                // Limpa o erro do campo ao digitar
                 if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }));
               }}
               error={errors.email}
@@ -165,7 +188,7 @@ export function LoginScreen() {
               autoComplete="email"
             />
 
-            {/* Campo de senha */}
+            {/* Campo senha */}
             <CustomInput
               label="Senha"
               placeholder="Mínimo 6 caracteres"
@@ -178,29 +201,35 @@ export function LoginScreen() {
               isPassword
             />
 
-            {/* Botão de login */}
+            {/* Campo confirmar senha */}
+            <CustomInput
+              label="Confirmar senha"
+              placeholder="Digite a senha novamente"
+              value={confirmPassword}
+              onChangeText={(text) => {
+                setConfirmPassword(text);
+                if (errors.confirmPassword)
+                  setErrors((prev) => ({ ...prev, confirmPassword: undefined }));
+              }}
+              error={errors.confirmPassword}
+              isPassword
+            />
+
+            {/* Botão de cadastro */}
             <Button
-              title="Entrar"
-              onPress={handleLogin}
+              title="Criar conta"
+              onPress={handleRegister}
               loading={loading}
-              style={styles.loginButton}
+              style={styles.registerButton}
             />
           </View>
 
-          {/* Link para cadastro */}
+          {/* Link para login */}
           <View style={styles.footer}>
-            <Text style={styles.footerText}>Não tem uma conta? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate("Register")}>
-              <Text style={styles.footerLink}>Cadastre-se</Text>
+            <Text style={styles.footerText}>Já tem uma conta? </Text>
+            <TouchableOpacity onPress={() => navigation.navigate("Login")}>
+              <Text style={styles.footerLink}>Entrar</Text>
             </TouchableOpacity>
-          </View>
-
-          {/* Dica para os alunos */}
-          <View style={styles.hint}>
-            <Text style={styles.hintText}>
-              💡 Conta de demonstração:{"\n"}
-              admin@teste.com / 123456
-            </Text>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -223,22 +252,33 @@ const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
     padding: 24,
-    justifyContent: "center",
+  },
+
+  // Botão voltar
+  backButton: {
+    alignSelf: "flex-start",
+    marginBottom: 16,
+    padding: 4,
+  },
+  backText: {
+    color: COLORS.primary,
+    fontSize: 15,
+    fontWeight: "600",
   },
 
   // Cabeçalho
   header: {
     alignItems: "center",
-    marginBottom: 32,
+    marginBottom: 28,
   },
   logo: {
-    fontSize: 56,
+    fontSize: 48,
     marginBottom: 8,
   },
   title: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: "800",
-    color: COLORS.primary,
+    color: COLORS.textPrimary,
     letterSpacing: -0.5,
   },
   subtitle: {
@@ -257,13 +297,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 12,
-    elevation: 3, // sombra no Android
-  },
-  cardTitle: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: COLORS.textPrimary,
-    marginBottom: 20,
+    elevation: 3,
   },
 
   // Banner de erro geral
@@ -278,7 +312,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 
-  loginButton: {
+  registerButton: {
     marginTop: 8,
   },
 
@@ -287,6 +321,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     marginTop: 24,
+    marginBottom: 16,
   },
   footerText: {
     color: COLORS.textSecondary,
@@ -296,20 +331,5 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     fontSize: 14,
     fontWeight: "700",
-  },
-
-  // Dica de acesso
-  hint: {
-    marginTop: 16,
-    padding: 12,
-    backgroundColor: COLORS.primaryLight,
-    borderRadius: 12,
-    alignItems: "center",
-  },
-  hintText: {
-    color: COLORS.primary,
-    fontSize: 13,
-    textAlign: "center",
-    lineHeight: 20,
   },
 });

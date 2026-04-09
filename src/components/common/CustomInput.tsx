@@ -1,3 +1,9 @@
+/**
+ * Componente CustomInput – campo de texto estilizado.
+ *
+ * Encapsula o TextInput nativo com label e mensagem de erro,
+ * seguindo o padrão visual do app.
+ */
 import React, { useState } from "react";
 import {
   View,
@@ -9,33 +15,52 @@ import {
 } from "react-native";
 import { COLORS } from "@/constants/colors";
 
+// ------------------------------------------------------------------
+// Tipos das props
+// ------------------------------------------------------------------
+
 interface CustomInputProps extends TextInputProps {
+  /** Label exibida acima do input */
   label: string;
+  /** Mensagem de erro exibida abaixo do input (deixe vazio para ocultar) */
   error?: string;
+  /** Quando true, exibe botão para mostrar/ocultar a senha */
   isPassword?: boolean;
 }
+
+// ------------------------------------------------------------------
+// Componente
+// ------------------------------------------------------------------
 
 export function CustomInput({
   label,
   error,
   isPassword = false,
-  ...rest
+  ...rest // repassa todas as outras props do TextInput (value, onChangeText, etc.)
 }: CustomInputProps) {
+  // Controla se a senha está visível ou oculta
   const [showPassword, setShowPassword] = useState(false);
 
   return (
     <View style={styles.container}>
+      {/* Label do campo */}
       <Text style={styles.label}>{label}</Text>
 
+      {/* Container do input (precisamos posicionar o botão de olho) */}
       <View style={styles.inputWrapper}>
         <TextInput
-          style={[styles.input, error ? styles.inputError : null]}
+          style={[
+            styles.input,
+            error ? styles.inputError : null, // borda vermelha se houver erro
+          ]}
           placeholderTextColor={COLORS.textLight}
+          // Se for campo de senha, alterna entre ocultar/mostrar
           secureTextEntry={isPassword && !showPassword}
-          autoCapitalize="none"
+          autoCapitalize="none" // não capitaliza automaticamente
           {...rest}
         />
 
+        {/* Botão de olho – só aparece em campos de senha */}
         {isPassword && (
           <TouchableOpacity
             style={styles.eyeButton}
@@ -46,10 +71,15 @@ export function CustomInput({
         )}
       </View>
 
+      {/* Mensagem de erro – só aparece quando há erro */}
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
     </View>
   );
 }
+
+// ------------------------------------------------------------------
+// Estilos
+// ------------------------------------------------------------------
 
 const styles = StyleSheet.create({
   container: {
@@ -62,7 +92,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   inputWrapper: {
-    position: "relative",
+    position: "relative", // necessário para posicionar o botão de olho
     justifyContent: "center",
   },
   input: {
@@ -76,7 +106,7 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
   },
   inputError: {
-    borderColor: COLORS.danger,
+    borderColor: COLORS.danger, // borda vermelha quando há erro
   },
   eyeButton: {
     position: "absolute",
